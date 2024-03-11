@@ -1,13 +1,11 @@
 package com.vexsoftware.votifier.sponge.cmd;
 
 import com.vexsoftware.votifier.sponge.NuVotifier;
-import org.spongepowered.api.command.CommandException;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.spongepowered.api.command.CommandExecutor;
 import org.spongepowered.api.command.CommandResult;
-import org.spongepowered.api.command.CommandSource;
-import org.spongepowered.api.command.args.CommandContext;
-import org.spongepowered.api.command.spec.CommandExecutor;
-import org.spongepowered.api.text.Text;
-import org.spongepowered.api.text.format.TextColors;
+import org.spongepowered.api.command.parameter.CommandContext;
 
 public class NVReloadCmd implements CommandExecutor {
 
@@ -18,11 +16,11 @@ public class NVReloadCmd implements CommandExecutor {
     }
 
     @Override
-    public CommandResult execute(CommandSource src, CommandContext args) throws CommandException {
-        src.sendMessage(Text.builder("Reloading NuVotifier...").color(TextColors.GRAY).build());
+    public CommandResult execute(CommandContext args) {
+        args.sendMessage(Component.text("Reloading NuVotifier...", NamedTextColor.GRAY));
         if (plugin.reload())
             return CommandResult.success();
         else
-            return CommandResult.empty();
+            return CommandResult.error(Component.text("There was a problem reloading the plugin.", NamedTextColor.RED));
     }
 }

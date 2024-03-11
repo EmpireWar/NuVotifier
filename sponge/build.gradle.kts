@@ -17,7 +17,7 @@ blossom {
 }
 
 sponge {
-    apiVersion("7.2.0")
+    apiVersion("11.0.0-SNAPSHOT")
     loader {
         name(PluginLoaders.JAVA_PLAIN)
         version("1.0")
@@ -29,6 +29,7 @@ sponge {
         displayName("NuVotifier")
         entrypoint("com.vexsoftware.votifier.sponge.NuVotifier")
         description("Safe, smart, and secure Votifier server plugin")
+        version(project.ext["internalVersion"].toString())
         links {
             source("https://github.com/NuVotifier/NuVotifier")
             issues("https://github.com/NuVotifier/NuVotifier")
@@ -36,10 +37,13 @@ sponge {
         contributor("Ichbinjoe") {
             description("Lead Developer")
         }
+        contributor("SamB440") {
+            description("Maintainer")
+        }
         dependency("spongeapi") {
             loadOrder(PluginDependency.LoadOrder.AFTER)
             optional(false)
-            version("7.2.0")
+            version("11.0.0-SNAPSHOT")
         }
     }
 }
@@ -56,10 +60,10 @@ configurations {
 }
 
 dependencies {
-    compileOnly("org.spongepowered:spongeapi:7.2.0")
-
     "api"(project(":nuvotifier-api"))
     "api"(project(":nuvotifier-common"))
+
+    compileOnly("org.slf4j:slf4j-api:2.0.12")
 }
 
 tasks.named<Jar>("jar") {

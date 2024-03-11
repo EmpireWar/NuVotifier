@@ -18,36 +18,47 @@ import com.vexsoftware.votifier.sponge.forwarding.SpongePluginMessagingForwardin
 import com.vexsoftware.votifier.support.forwarding.ForwardedVoteListener;
 import com.vexsoftware.votifier.support.forwarding.ForwardingVoteSink;
 import com.vexsoftware.votifier.util.KeyCreator;
+import net.kyori.adventure.text.Component;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.spongepowered.api.Server;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.command.args.GenericArguments;
-import org.spongepowered.api.command.spec.CommandSpec;
+import org.spongepowered.api.command.Command;
+import org.spongepowered.api.command.parameter.Parameter;
 import org.spongepowered.api.config.ConfigDir;
 import org.spongepowered.api.event.Listener;
-import org.spongepowered.api.event.game.GameReloadEvent;
-import org.spongepowered.api.event.game.state.GameStartedServerEvent;
-import org.spongepowered.api.event.game.state.GameStoppingServerEvent;
-import org.spongepowered.api.plugin.Plugin;
-import org.spongepowered.api.text.Text;
+import org.spongepowered.api.event.lifecycle.RefreshGameEvent;
+import org.spongepowered.api.event.lifecycle.RegisterCommandEvent;
+import org.spongepowered.api.event.lifecycle.StartedEngineEvent;
+import org.spongepowered.api.event.lifecycle.StoppingEngineEvent;
+import org.spongepowered.api.scheduler.Task;
+import org.spongepowered.plugin.PluginContainer;
+import org.spongepowered.plugin.builtin.jvm.Plugin;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.security.Key;
 import java.security.KeyPair;
 import java.util.HashMap;
 import java.util.Map;
 
-@Plugin(id = "nuvotifier", name = "NuVotifier", version = "@version@", authors = "Ichbinjoe",
-        description = "Safe, smart, and secure Votifier server plugin")
+@Plugin("nuvotifier")
 public class NuVotifier implements VoteHandler, VotifierPlugin, ForwardedVoteListener {
 
-    @Inject
-    public Logger logger;
+    public final Logger logger = LoggerFactory.getLogger("NuVotifier");
 
     private SLF4JLogger loggerAdapter;
 
     @Inject
     @ConfigDir(sharedRoot = false)
-    public File configDir;
+    public Path configDir;
+
+    @Inject
+    private PluginContainer pluginContainer;
+
+    public PluginContainer getPluginContainer() {
+        return pluginContainer;
+    }
 
     private VotifierScheduler scheduler;
 
@@ -59,7 +70,7 @@ public class NuVotifier implements VoteHandler, VotifierPlugin, ForwardedVoteLis
          * Create RSA directory and keys if it does not exist; otherwise, read
          * keys.
          */
-        File rsaDirectory = new File(configDir, "rsa");
+        File rsaDirectory = new File(configDir.toFile(), "rsa");
         try {
             if (!rsaDirectory.exists()) {
                 if (!rsaDirectory.mkdir()) {
@@ -164,24 +175,11 @@ public class NuVotifier implements VoteHandler, VotifierPlugin, ForwardedVoteLis
     }
 
     @Listener
-    public void onServerStart(GameStartedServerEvent event) {
+    public void onServerStart(StartedEngineEvent<Server> event) {
         this.scheduler = new SpongeScheduler(this);
         this.loggerAdapter = new SLF4JLogger(logger);
 
-        CommandSpec nvreloadSpec = CommandSpec.builder()
-                .description(Text.of("Reloads NuVotifier"))
-                .permission("nuvotifier.reload")
-                .executor(new NVReloadCmd(this)).build();
 
-        Sponge.getCommandManager().register(this, nvreloadSpec, "nvreload");
-
-        CommandSpec testvoteSpec = CommandSpec.builder()
-                .arguments(GenericArguments.allOf(GenericArguments.string(Text.of("args"))))
-                .description(Text.of("Sends a test vote to the server's listeners"))
-                .permission("nuvotifier.testvote")
-                .executor(new TestVoteCmd(this)).build();
-
-        Sponge.getCommandManager().register(this, testvoteSpec, "testvote");
 
         if (!loadAndBind()) {
             gracefulExit();
@@ -189,12 +187,26 @@ public class NuVotifier implements VoteHandler, VotifierPlugin, ForwardedVoteLis
     }
 
     @Listener
-    public void onGameReload(GameReloadEvent event) {
+    public void onRegisterCommands(RegisterCommandEvent<Command.Parameterized> event) {
+        event.register(pluginContainer, Command.builder()
+                .shortDescription(Component.text("Reloads NuVotifier"))
+                .permission("nuvotifier.reload")
+                .executor(new NVReloadCmd(this)).build(), "nvreload");
+
+        event.register(pluginContainer, Command.builder()
+                .addParameter(Parameter.remainingJoinedStrings().key("args").build())
+                .shortDescription(Component.text("Sends a test vote to the server's listeners"))
+                .permission("nuvotifier.testvote")
+                .executor(new TestVoteCmd(this)).build(), "testvote");
+    }
+
+    @Listener
+    public void onGameReload(RefreshGameEvent event) {
         this.reload();
     }
 
     @Listener
-    public void onServerStop(GameStoppingServerEvent event) {
+    public void onServerStop(StoppingEngineEvent<Server> event) {
         halt();
         logger.info("Votifier disabled.");
     }
@@ -254,7 +266,7 @@ public class NuVotifier implements VoteHandler, VotifierPlugin, ForwardedVoteLis
     }
 
     public File getConfigDir() {
-        return configDir;
+        return configDir.toFile();
     }
 
     @Override
@@ -292,11 +304,9 @@ public class NuVotifier implements VoteHandler, VotifierPlugin, ForwardedVoteLis
     }
 
     private void fireVoteEvent(final Vote vote) {
-        Sponge.getScheduler().createTaskBuilder()
-                .execute(() -> {
-                    VotifierEvent event = new VotifierEvent(vote, Sponge.getCauseStackManager().getCurrentCause());
-                    Sponge.getEventManager().post(event);
-                })
-                .submit(this);
+        Sponge.server().scheduler().submit(Task.builder().plugin(pluginContainer).execute(() -> {
+            VotifierEvent event = new VotifierEvent(vote, Sponge.server().causeStackManager().currentCause());
+            Sponge.eventManager().post(event);
+        }).build());
     }
 }

@@ -4,17 +4,16 @@ import com.vexsoftware.votifier.model.Vote;
 import com.vexsoftware.votifier.net.VotifierSession;
 import com.vexsoftware.votifier.sponge.NuVotifier;
 import com.vexsoftware.votifier.util.ArgsToVote;
-import org.spongepowered.api.command.CommandException;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.spongepowered.api.command.CommandExecutor;
 import org.spongepowered.api.command.CommandResult;
-import org.spongepowered.api.command.CommandSource;
-import org.spongepowered.api.command.args.CommandContext;
-import org.spongepowered.api.command.spec.CommandExecutor;
-import org.spongepowered.api.text.Text;
-import org.spongepowered.api.text.format.TextColors;
-
-import java.util.Collection;
+import org.spongepowered.api.command.parameter.CommandContext;
+import org.spongepowered.api.command.parameter.Parameter;
 
 public class TestVoteCmd implements CommandExecutor {
+
+    private static final Parameter.Value<String> PARAMETER = Parameter.remainingJoinedStrings().key("args").build();
 
     private final NuVotifier plugin;
 
@@ -23,15 +22,15 @@ public class TestVoteCmd implements CommandExecutor {
     }
 
     @Override
-    public CommandResult execute(CommandSource sender, CommandContext args) throws CommandException {
+    public CommandResult execute(CommandContext args) {
         Vote v;
         try {
-            Collection<String> a = args.getAll("args");
-            v = ArgsToVote.parse(a.toArray(new String[0]));
+            final String argumentsString = args.requireOne(PARAMETER);
+            v = ArgsToVote.parse(argumentsString.split(" "));
         } catch (IllegalArgumentException e) {
-            sender.sendMessage(Text.builder("Error while parsing arguments to create test vote: " + e.getMessage()).color(TextColors.DARK_RED).build());
-            sender.sendMessage(Text.builder("Usage hint: /testvote [username] [serviceName=?] [username=?] [address=?] [localTimestamp=?] [timestamp=?]").color(TextColors.GRAY).build());
-            return CommandResult.empty();
+            return CommandResult.error(Component.text("Error while parsing arguments to create test vote: " + e.getMessage(), NamedTextColor.DARK_RED)
+                    .appendNewline()
+                    .append(Component.text("Usage hint: /testvote [username] [serviceName=?] [username=?] [address=?] [localTimestamp=?] [timestamp=?]", NamedTextColor.GRAY)));
         }
 
         plugin.onVoteReceived(v, VotifierSession.ProtocolVersion.TEST, "localhost.test");

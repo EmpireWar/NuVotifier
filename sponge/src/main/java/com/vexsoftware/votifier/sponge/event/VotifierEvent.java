@@ -1,7 +1,7 @@
 package com.vexsoftware.votifier.sponge.event;
 
 import com.vexsoftware.votifier.model.Vote;
-import org.spongepowered.api.event.cause.Cause;
+import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.event.impl.AbstractEvent;
 
 /**
@@ -18,7 +18,7 @@ public class VotifierEvent extends AbstractEvent {
     }
 
     @Override
-    public Cause getCause() {
+    public Cause cause() {
         return cause;
     }
 

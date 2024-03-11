@@ -1,4 +1,4 @@
-rootProject.name = "nuvotifier"
+rootProject.name = "NuVotifier"
 
 include("nuvotifier-api")
 project(":nuvotifier-api").projectDir = file("api")
